@@ -10,15 +10,12 @@
 /config.h.in
 /config.log
 /config.status
-/config.sub
-/depcomp
 /doc/Makefile
 /doc/Makefile.in
 /doc/doxygen-build.stamp
 /doc/html/
 /doc/latex/
 /doc/man/
-/doc/reference.doxygen
 /examples/Makefile.in
 /examples/example_client
 /examples/example_server
