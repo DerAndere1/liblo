@@ -354,7 +354,7 @@ int send_file(lo_address target, double speed) {
             lo_timetag_now(&tt_now);
             double wait_time = timetag_diff(*tt_last, tt_now);
             if (wait_time > 0.) {
-                usleep(wait_time * 1000000);
+                Sleep(wait_time * 1000);
             }
             if (b) {
                 ret = lo_send_bundle(target, b);
@@ -376,7 +376,7 @@ int send_file(lo_address target, double speed) {
         lo_timetag_now(&tt_now);
         double wait_time = timetag_diff(*tt_last, tt_now);
         if (wait_time > 0.) {
-            usleep(wait_time * 1000000);
+            Sleep(wait_time * 1000);
         }
         lo_send_bundle(target, b);
     }

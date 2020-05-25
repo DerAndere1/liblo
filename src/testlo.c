@@ -51,7 +51,7 @@
 #else
 #define PATHDELIM "/"
 #define EXTEXE ""
-#define SLEEP_MS(x) usleep((x)*1000)
+#define SLEEP_MS(x) Sleep((x))
 #endif
 
 #ifndef MSG_NOSIGNAL
@@ -1475,7 +1475,7 @@ void test_subtest(lo_server_thread st)
             exit(1);
         }
         while (subtest_count < 1 && j < 20) {
-            usleep(100000);
+            Sleep(100);
             j++;
         }
     }
