@@ -24,22 +24,11 @@
 #include <string.h>
 #include <sys/types.h>
 
-#if defined(WIN32) || defined(_MSC_VER)
 #include <io.h>
 #define snprintf _snprintf
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
-#else
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
-#ifdef HAVE_GETIFADDRS
-#include <ifaddrs.h>
-#endif
-#endif
 
 #include "lo_types_internal.h"
 #include "lo_internal.h"
@@ -119,13 +108,6 @@ lo_address lo_address_new_from_url(const char *url)
             free(host);
         if (port)
             free(port);
-#if !defined(WIN32) && !defined(_MSC_VER)
-    } else if (protocol == LO_UNIX) {
-        port = lo_url_get_path(url);
-        a = lo_address_new_with_proto(LO_UNIX, NULL, port);
-        if (port)
-            free(port);
-#endif
     } else {
         proto = lo_url_get_protocol(url);
         fprintf(stderr,
@@ -174,11 +156,6 @@ static void lo_address_resolve_source(lo_address a)
             case EAI_NONAME:
                 lo_throw(s, err, "Cannot resolve", a->source_path);
                 break;
-#if !defined(WIN32) && !defined(_MSC_VER)
-            case EAI_SYSTEM:
-                lo_throw(s, err, strerror(err), a->source_path);
-                break;
-#endif
             default:
                 lo_throw(s, err, "Unknown error", a->source_path);
                 break;
@@ -235,10 +212,6 @@ static const char *get_protocol_name(int proto)
         return "udp";
     case LO_TCP:
         return "tcp";
-#if !defined(WIN32) && !defined(_MSC_VER)
-    case LO_UNIX:
-        return "unix";
-#endif
     }
     return NULL;
 }
@@ -603,8 +576,6 @@ int lo_address_resolve(lo_address a)
     return 0;
 }
 
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
-
 int lo_address_set_iface(lo_address t, const char *iface, const char *ip)
 {
     int fam;
@@ -621,13 +592,13 @@ int lo_address_set_iface(lo_address t, const char *iface, const char *ip)
 int lo_inaddr_find_iface(lo_inaddr t, int fam,
                          const char *iface, const char *ip)
 {
-#if defined(WIN32) || defined(_MSC_VER)
+
     ULONG size;
     int tries;
     PIP_ADAPTER_ADDRESSES paa, aa;
     DWORD rc;
     int found;
-#endif
+
 
 	union {
         struct in_addr addr;
@@ -646,8 +617,6 @@ int lo_inaddr_find_iface(lo_inaddr t, int fam,
             *((unsigned long*)&a.addr) = inet_addr(ip);
 #endif
     }
-
-#if defined(WIN32) || defined(_MSC_VER)
 
     /* Start with recommended 15k buffer for GetAdaptersAddresses. */
     size = 15*1024/2;
@@ -743,78 +712,6 @@ int lo_inaddr_find_iface(lo_inaddr t, int fam,
 
     return !found;
 
-#else // !WIN32
-
-    struct ifaddrs *ifa, *ifa_list;
-    if (getifaddrs(&ifa_list)==-1)
-        return 5;
-    ifa = ifa_list;
-
-    int found = 0;
-    while (ifa) {
-        if (!ifa->ifa_addr) {
-            ifa = ifa->ifa_next;
-            continue;
-        }
-        if (ip) {
-            if (ifa->ifa_addr->sa_family == AF_INET && fam == AF_INET)
-            {
-                if (memcmp(&((struct sockaddr_in*)ifa->ifa_addr)->sin_addr,
-                           &a.addr, sizeof(struct in_addr))==0) {
-                    found = 1;
-                    t->size = sizeof(struct in_addr);
-                    memcpy(&t->a, &a, t->size);
-                    break;
-                }
-            }
-#ifdef ENABLE_IPV6
-            else if (ifa->ifa_addr->sa_family == AF_INET6 && fam == AF_INET6)
-            {
-                if (memcmp(&((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr,
-                           &a.addr6, sizeof(struct in6_addr))==0) {
-                    found = 1;
-                    t->size = sizeof(struct in6_addr);
-                    memcpy(&t->a, &a, t->size);
-                    break;
-                }
-            }
-#endif
-        }
-        if (iface) {
-            if (ifa->ifa_addr->sa_family == fam
-                && strcmp(ifa->ifa_name, iface)==0)
-            {
-                if (fam==AF_INET) {
-                    found = 1;
-                    t->size = sizeof(struct in_addr);
-                    memcpy(&t->a, &((struct sockaddr_in*)
-                                    ifa->ifa_addr)->sin_addr,
-                           t->size);
-                    break;
-                }
-#ifdef ENABLE_IPV6
-                else if (fam==AF_INET6) {
-                    found = 1;
-                    t->size = sizeof(struct in6_addr);
-                    memcpy(&t->a, &((struct sockaddr_in6*)
-                                    ifa->ifa_addr)->sin6_addr,
-                           t->size);
-                    break;
-                }
-#endif
-            }
-        }
-        ifa = ifa->ifa_next;
-    }
-
-    if (found && ifa->ifa_name) {
-        if (t->iface) free(t->iface);
-        t->iface = strdup(ifa->ifa_name);
-    }
-
-    freeifaddrs(ifa_list);
-    return !found;
-#endif
 }
 
 const char* lo_address_get_iface(lo_address t)
@@ -823,7 +720,5 @@ const char* lo_address_get_iface(lo_address t)
         return t->addr.iface;
     return 0;
 }
-
-#endif // HAVE_GETIFADDRS
 
 /* vi:set ts=8 sts=4 sw=4: */

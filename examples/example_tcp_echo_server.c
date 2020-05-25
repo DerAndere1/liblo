@@ -23,10 +23,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#ifndef WIN32
-#include <unistd.h>
-#include <sys/time.h>
-#endif
 #include <signal.h>
 #include "lo/lo.h"
 
@@ -93,11 +89,7 @@ int main(int argc, char *argv[])
     }
 
     while (!done) {
-#ifdef WIN32
         Sleep(1);
-#else
-        sleep(1);
-#endif
     }
 
     lo_server_thread_free(st);
@@ -125,11 +117,7 @@ int echo_handler(const char *path, const char *types, lo_arg ** argv,
 
     count ++;
 
-#ifdef WIN32
     Sleep(1);
-#else
-    sleep(1);
-#endif
 
     printf("path: <%s>\n", path);
     for (i = 0; i < argc; i++) {

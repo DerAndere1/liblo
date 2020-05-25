@@ -37,7 +37,6 @@
 #include <sys/time.h>
 #endif
 
-#if defined(WIN32) || defined(_MSC_VER)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <malloc.h>
@@ -46,13 +45,6 @@
 // check for WSAEADDRINUSE though on Windows.
 #ifndef EADDRINUSE
 #define EADDRINUSE WSAEADDRINUSE
-#endif
-#else
-#include <netdb.h>
-#include <sys/socket.h>
-#ifdef HAVE_POLL
-#include <poll.h>
-#endif
 #include <sys/un.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -61,11 +53,7 @@
 #endif
 #endif
 
-#if defined(WIN32) || defined(_MSC_VER)
 #define geterror() WSAGetLastError()
-#else
-#define geterror() errno
-#endif
 
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
@@ -106,7 +94,6 @@ static int lo_server_join_multicast_group(lo_server s, const char *group,
                                           int family,
                                           const char *iface, const char *ip);
 
-#if defined(WIN32) || defined(_MSC_VER)
 #ifndef gai_strerror
 // Copied from the Win32 SDK
 
@@ -132,7 +119,6 @@ char *WSAAPI gai_strerrorA(int ecode)
                               GAI_STRERROR_BUFFER_SIZE, NULL);
     return buff;
 }
-#endif
 
 static int stateWSock = -1;
 
@@ -236,14 +222,12 @@ lo_server lo_server_new_multicast(const char *group, const char *port,
     return lo_server_new_with_proto_internal(group, port, 0, 0, LO_UDP, err_h);
 }
 
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
 lo_server lo_server_new_multicast_iface(const char *group, const char *port,
                                         const char *iface, const char *ip,
                                         lo_err_handler err_h)
 {
     return lo_server_new_with_proto_internal(group, port, iface, ip, LO_UDP, err_h);
 }
-#endif
 
 lo_server lo_server_new_with_proto(const char *port, int proto,
                                    lo_err_handler err_h)
@@ -272,14 +256,6 @@ lo_server lo_server_new_from_url(const char *url,
             free(group);
         if (port)
             free(port);
-#if !defined(WIN32) && !defined(_MSC_VER)
-    } else if (protocol == LO_UNIX) {
-        port = lo_url_get_path(url);
-        s = lo_server_new_with_proto_internal(0, port, 0, 0,
-                                              LO_UNIX, err_h);
-        if (port)
-            free(port);
-#endif
     } else {
         proto = lo_url_get_protocol(url);
         fprintf(stderr,
@@ -389,7 +365,6 @@ void lo_server_resolve_hostname(lo_server s)
     s->hostname = strdup(hostname);
 }
 
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
 
 static int lo_server_set_iface(lo_server s, int fam, const char *iface, const char *ip)
 {
@@ -419,7 +394,6 @@ static int lo_server_set_iface(lo_server s, int fam, const char *iface, const ch
     return 0;
 }
 
-#endif // HAVE_GETIFADDRS
 
 lo_server lo_server_new_with_proto_internal(const char *group,
                                             const char *port,
@@ -436,26 +410,17 @@ lo_server lo_server_new_with_proto_internal(const char *group,
     const char *service;
     int err = 0;
 
-#if defined(WIN32) || defined(_MSC_VER)
     /* Windows Server 2003 or later (Vista, 7, etc.) must join the
      * multicast group before bind(), but Windows XP must join
      * after bind(). */
     int wins2003_or_later = detect_windows_server_2003_or_later();
-#endif
 
     // Set real protocol, if Default is requested
     if (proto == LO_DEFAULT) {
-#if !defined(WIN32) && !defined(_MSC_VER)
-        if (port && *port == '/')
-            proto = LO_UNIX;
-        else
-#endif
             proto = LO_UDP;
     }
-#if defined(WIN32) || defined(_MSC_VER)
     if (!initWSock())
         return NULL;
-#endif
 
     s = (lo_server) calloc(1, sizeof(struct _lo_server));
     if (!s)
@@ -500,38 +465,6 @@ lo_server lo_server_new_with_proto_internal(const char *group,
     } else if (proto == LO_TCP) {
         hints.ai_socktype = SOCK_STREAM;
     }
-#if !defined(WIN32) && !defined(_MSC_VER)
-    else if (proto == LO_UNIX) {
-
-        struct sockaddr_un sa;
-
-        s->sockets[0].fd = socket(PF_UNIX, SOCK_DGRAM, 0);
-        if (s->sockets[0].fd == -1) {
-            err = geterror();
-            used = NULL;
-            lo_throw(s, err, strerror(err), "socket()");
-            lo_server_free(s);
-
-            return NULL;
-        }
-
-        sa.sun_family = AF_UNIX;
-        strncpy(sa.sun_path, port, sizeof(sa.sun_path) - 1);
-
-        if ((bind(s->sockets[0].fd,
-                  (struct sockaddr *) &sa, sizeof(sa))) < 0) {
-            err = geterror();
-            lo_throw(s, err, strerror(err), "bind()");
-
-            lo_server_free(s);
-            return NULL;
-        }
-
-        s->path = strdup(port);
-
-        return s;
-    }
-#endif
     else {
         lo_throw(s, LO_UNKNOWNPROTO, "Unknown protocol", NULL);
         lo_server_free(s);
@@ -638,9 +571,7 @@ lo_server lo_server_new_with_proto_internal(const char *group,
 				reuseport_supported = 0;
         }
 
-#if defined(WIN32) || defined(_MSC_VER)
         if (wins2003_or_later)
-#endif
 	{
         /* Join multicast group if specified. */
         if (group != NULL) {
@@ -648,25 +579,19 @@ lo_server lo_server_new_with_proto_internal(const char *group,
                                                iface, ip))
                 return NULL;
         } else {
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
              if ((iface || ip)
                  && lo_inaddr_find_iface(&s->addr_if, used->ai_family, iface, ip))
              {
                  used = NULL;
                  continue;
              }
-#endif
         }}
 
         if ((used != NULL) &&
             (bind(s->sockets[0].fd, used->ai_addr, used->ai_addrlen) <
              0)) {
             err = geterror();
-#ifdef WIN32
             if (err == EINVAL || err == WSAEADDRINUSE) {
-#else
-            if (err == EINVAL || err == EADDRINUSE) {
-#endif
                 used = NULL;
                 continue;
             }
@@ -685,14 +610,12 @@ lo_server lo_server_new_with_proto_internal(const char *group,
         return NULL;
     }
 
-#if defined(WIN32) || defined(_MSC_VER)
     if (!wins2003_or_later)
     /* Join multicast group if specified. */
     if (group != NULL)
         if (lo_server_join_multicast_group(s, group, used->ai_family,
                                            iface, ip))
             return NULL;
-#endif
 
     if (proto == LO_TCP) {
         listen(s->sockets[0].fd, 8);
@@ -745,7 +668,6 @@ int lo_server_join_multicast_group(lo_server s, const char *group,
         }
 #endif
     }
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
     if (iface || ip) {
         int err = lo_server_set_iface(s, fam, iface, ip);
         if (err) {
@@ -758,7 +680,6 @@ int lo_server_join_multicast_group(lo_server s, const char *group,
         //       how to specify group membership interface with IPv6?
     }
     else
-#endif // HAVE_GETIFADDRS
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if (setsockopt(s->sockets[0].fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
@@ -896,12 +817,10 @@ void *lo_server_recv_raw(lo_server s, size_t * size)
         return NULL;
     }
 
-#if defined(WIN32) || defined(_MSC_VER)
     if (!initWSock()) {
         if (heap_buffer) free(buffer);
         return NULL;
     }
-#endif
 
     s->addr_len = sizeof(s->addr);
 
@@ -1288,10 +1207,8 @@ void *lo_server_recv_raw_stream(lo_server s, size_t * size, int *psock)
 
 #else
 #ifdef HAVE_SELECT
-#if defined(WIN32) || defined(_MSC_VER)
     if (!initWSock())
         return NULL;
-#endif
 
     nfds = 0;
     FD_ZERO(&ps);
@@ -1461,10 +1378,8 @@ int lo_servers_wait(lo_server *s, int *status, int num_servers, int timeout)
 #ifdef HAVE_SELECT
     int res, to, nfds = 0;
 
-#if defined(WIN32) || defined(_MSC_VER)
     if (!initWSock())
         return 0;
-#endif
 
   again:
 
@@ -1641,10 +1556,8 @@ int lo_server_recv(lo_server s)
         }
 #else
 #ifdef HAVE_SELECT
-#if defined(WIN32) || defined(_MSC_VER)
         if (!initWSock())
             return 0;
-#endif
 
         FD_ZERO(&ps);
         for (i = 0; i < s->sockets_len; i++) {
@@ -1704,12 +1617,8 @@ int lo_server_add_socket(lo_server s, int socket, lo_address a,
 {
     /* We must ensure all stream sockets are non-blocking on recv()
      * since we are doing our blocking via select()/poll(). */
-#ifdef WIN32
 	unsigned long on=1;
 	ioctlsocket(socket, FIONBIO, &on);
-#else
-    fcntl(socket, F_SETFL, O_NONBLOCK, 1);
-#endif
 
     /* Update array of open sockets */
     if ((s->sockets_len + 1) > s->sockets_alloc) {
@@ -2270,9 +2179,6 @@ int lo_server_add_bundle_handlers(lo_server s,
 int lo_server_get_socket_fd(lo_server s)
 {
     if (s->protocol != LO_UDP && s->protocol != LO_TCP
-#if !defined(WIN32) && !defined(_MSC_VER)
-        && s->protocol != LO_UNIX
-#endif
         ) {
         return -1;              /* assume it is not supported */
     }
@@ -2328,19 +2234,6 @@ char *lo_server_get_url(lo_server s)
 
         return buf;
     }
-#if !defined(WIN32) && !defined(_MSC_VER)
-    else if (s->protocol == LO_UNIX) {
-        ret = snprintf(NULL, 0, "osc.unix:///%s", s->path);
-        if (ret <= 0) {
-            /* this libc is not C99 compliant, guess a size */
-            ret = 1023;
-        }
-        buf = (char*) malloc((ret + 2) * sizeof(char));
-        snprintf(buf, ret + 1, "osc.unix:///%s", s->path);
-
-        return buf;
-    }
-#endif
     return NULL;
 }
 

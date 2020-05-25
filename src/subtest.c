@@ -53,11 +53,7 @@ int main(int argc, char *argv[])
 
     tries = 400;
     while (subtest_count == 0 && (--tries > 0)) {
-#if defined(WIN32) || defined(_MSC_VER)
         Sleep(10);
-#else
-        usleep(10000);
-#endif
     }
 
     if (tries == 0) {
@@ -101,11 +97,7 @@ int subtest_handler(const char *path, const char *types, lo_arg ** argv,
 
     for (i = 0; i < 10; i++) {
         lo_send(a, "/subtest-reply", "i", 0xbaa + i);
-#if defined(WIN32) || defined(_MSC_VER)
         Sleep(2);
-#else
-        usleep(2000);
-#endif
     }
 
     subtest_count ++;

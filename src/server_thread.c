@@ -26,15 +26,9 @@
 #endif
 #include <sys/types.h>
 
-#if defined(WIN32) || defined(_MSC_VER)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <process.h>
-#else
-#include <unistd.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#endif
 
 #include "lo_types_internal.h"
 #include "lo/lo.h"
@@ -79,7 +73,6 @@ lo_server_thread lo_server_thread_new_multicast(const char *group,
     return st;
 }
 
-#if defined(WIN32) || defined(_MSC_VER) || defined(HAVE_GETIFADDRS)
 lo_server_thread lo_server_thread_new_multicast_iface(const char *group, const char *port,
 						      const char *iface, const char *ip,
 						      lo_err_handler err_h)
@@ -88,7 +81,6 @@ lo_server_thread lo_server_thread_new_multicast_iface(const char *group, const c
         lo_server_new_multicast_iface(group, port, iface, ip, err_h));
     return st;
 }
-#endif
 
 lo_server_thread lo_server_thread_new_with_proto(const char *port,
                                                  int proto,

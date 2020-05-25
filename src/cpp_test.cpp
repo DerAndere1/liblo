@@ -6,10 +6,6 @@
 #include <array>
 #include <vector>
 
-#ifndef WIN32
-#include <unistd.h>
-#endif
-
 #include <lo/lo.h>
 #define LO_USE_EXCEPTIONS
 #include <lo/lo_cpp.h>
@@ -250,11 +246,7 @@ int main()
 #endif
     }
 
-#ifdef WIN32
     Sleep(1000);
-#else
-    sleep(1);
-#endif
     printf("%s: %d\n", a.errstr().c_str(), a.get_errno());
     return a.get_errno();
 }
