@@ -12,7 +12,6 @@
 /doc/html/
 /doc/latex/
 /doc/man/
-/examples/Makefile.in
 /examples/example_client
 /examples/example_server
 /examples/example_tcp_echo_server
