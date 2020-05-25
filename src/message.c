@@ -24,8 +24,12 @@
 #include <string.h>
 #include <math.h>
 
+#if defined(WIN32) || defined(_MSC_VER)
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <netinet/in.h>
+#endif
 
 #include "lo_types_internal.h"
 #include "lo_internal.h"

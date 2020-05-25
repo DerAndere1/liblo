@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#ifndef WIN32
+#include <sys/time.h>
+#include <unistd.h>
+#endif
 
 #include "lo/lo.h"
 
@@ -44,6 +48,9 @@ int main()
 {
     int lo_fd;
     fd_set rfds;
+#ifndef WIN32
+    struct timeval tv;
+#endif
     int retval;
 
     /* start a new server on port 7770 */
@@ -70,6 +77,9 @@ int main()
         do {
 
             FD_ZERO(&rfds);
+#ifndef WIN32
+            FD_SET(0, &rfds);   /* stdin */
+#endif
             FD_SET(lo_fd, &rfds);
 
             retval = select(lo_fd + 1, &rfds, NULL, NULL, NULL);        /* no timeout */
@@ -99,9 +109,35 @@ int main()
 
         /* lo_server protocol does not support select(), so we'll watch
          * stdin while polling the lo_server. */
+#ifdef WIN32
         printf
             ("non-blocking input from stdin not supported under Windows\n");
         exit(1);
+#else
+        do {
+
+            FD_ZERO(&rfds);
+            FD_SET(0, &rfds);
+            tv.tv_sec = 0;
+            tv.tv_usec = 10000;
+
+            retval = select(1, &rfds, NULL, NULL, &tv); /* timeout every 10ms */
+
+            if (retval == -1) {
+
+                printf("select() error\n");
+                exit(1);
+
+            } else if (retval > 0 && FD_ISSET(0, &rfds)) {
+
+                read_stdin();
+
+            }
+
+            lo_server_recv_noblock(s, 0);
+
+        } while (!done);
+#endif
     }
 
     return 0;
@@ -152,7 +188,18 @@ int quit_handler(const char *path, const char *types, lo_arg ** argv,
 
 void read_stdin(void)
 {
+#ifdef WIN32
   return;
+#else
+    char buf[256];
+    int len = read(0, buf, 256);
+    if (len > 0) {
+        printf("stdin: ");
+        fwrite(buf, len, 1, stdout);
+        printf("\n");
+        fflush(stdout);
+    }
+#endif
 }
 
 /* vi:set ts=8 sts=4 sw=4: */

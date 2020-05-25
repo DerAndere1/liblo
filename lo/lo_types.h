@@ -25,8 +25,12 @@
 extern "C" {
 #endif
 
+#if defined(WIN32) || defined(_MSC_VER)
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#endif
 
 #include "lo/lo_osc_types.h"
 

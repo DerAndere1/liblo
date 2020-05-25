@@ -31,8 +31,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef WIN32
 #include <process.h>
 #include <direct.h>
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -42,9 +44,15 @@
 #include "lo_internal.h"
 #include "lo/lo.h"
 
+#if defined(WIN32) || defined(_MSC_VER)
 #define PATHDELIM "\\"
 #define EXTEXE ".exe"
 #define SLEEP_MS(x) Sleep(x)
+#else
+#define PATHDELIM "/"
+#define EXTEXE ""
+#define SLEEP_MS(x) usleep((x)*1000)
+#endif
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -716,6 +724,10 @@ void test_validation(lo_address a)
 
     /* Note: lo_client_sockets is not available when liblo is compiled
      * as a DLL. */
+#if !defined(WIN32) && !defined(_MSC_VER)
+    if (sock == -1)
+        sock = lo_client_sockets.udp;
+#endif
     if (sock == -1) {
         fprintf(stderr,
                 "Warning: Couldn't get socket in test_validation(), "
@@ -1424,6 +1436,7 @@ void test_subtest(lo_server_thread st)
 
     server_url = lo_server_thread_get_url(st);
 
+#ifdef WIN32
     {
         char cwd[2048];
         _getcwd(cwd, 2048);
@@ -1447,6 +1460,26 @@ void test_subtest(lo_server_thread st)
             exit(1);
         }
     }
+#else
+    sprintf(cmd, "." PATHDELIM "subtest" EXTEXE " %s", server_url);
+    printf("executing subtest with `%s'\n", cmd);
+    for (i=0; i<2; i++) {
+        int j=0;
+        rc = system(cmd);
+        if (rc == -1) {
+            fprintf(stderr, "Cannot execute subtest command (%d)\n", i);
+            exit(1);
+        }
+        else if (rc > 0) {
+            fprintf(stderr, "subtest command returned %d\n", rc);
+            exit(1);
+        }
+        while (subtest_count < 1 && j < 20) {
+            usleep(100000);
+            j++;
+        }
+    }
+#endif
 
     free(server_url);
 
@@ -1645,6 +1678,29 @@ void test_nonblock()
 
 void test_unix_sockets()
 {
+#if !defined(WIN32) && !defined(_MSC_VER)
+    lo_address ua;
+    lo_server us;
+    char *addr;
+
+    DOING("test_unix_sockets");
+
+    unlink("/tmp/testlo.osc");
+    us = lo_server_new_with_proto("/tmp/testlo.osc", LO_UNIX, error);
+    ua = lo_address_new_from_url("osc.unix:///tmp/testlo.osc");
+    TEST(lo_server_get_protocol(us) == LO_UNIX);
+    TEST(lo_send(ua, "/unix", "f", 23.0) == 16);
+    TEST(lo_server_recv(us) == 16);
+    addr = lo_server_get_url(us);
+    TEST(!strcmp("osc.unix:////tmp/testlo.osc", addr));
+    free(addr);
+    lo_address_free(ua);
+    ua = lo_address_new_with_proto(LO_UNIX, NULL, "/tmp/testlo.osc");
+    TEST(lo_send(ua, "/unix", "f", 23.0) == 16);
+    TEST(lo_server_recv(us) == 16);
+    lo_server_free(us);
+    lo_address_free(ua);
+#endif
 }
 
 void test_tcp()

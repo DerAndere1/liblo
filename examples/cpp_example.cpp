@@ -2,6 +2,9 @@
 #include <iostream>
 #include <atomic>
 
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 #include <lo/lo.h>
 #include <lo/lo_cpp.h>
@@ -87,7 +90,11 @@ int main()
      */
     int tries = 200;
     while (received < 4 && --tries > 0) {
+#ifdef WIN32
         Sleep(10);
+#else
+        usleep(10*1000);
+#endif
     }
 
     if (tries <= 0) {

@@ -25,9 +25,20 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#if defined(WIN32) || defined(_MSC_VER)
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netinet/tcp.h>
+#endif
 
 #include "lo_types_internal.h"
 #include "lo_internal.h"
@@ -37,9 +48,15 @@
 #define MSG_NOSIGNAL 0
 #endif
 
+#if defined(WIN32) || defined(_MSC_VER)
 int initWSock();
+#endif
 
+#if defined(WIN32) || defined(_MSC_VER)
 #define geterror() WSAGetLastError()
+#else
+#define geterror() errno
+#endif
 
 static int create_socket(lo_address a);
 static int send_data(lo_address a, lo_server from, char *data,
@@ -346,6 +363,30 @@ static int create_socket(lo_address a)
         a->socket = sfd;
     }
         break;
+#if !defined(WIN32) && !defined(_MSC_VER)
+    case LO_UNIX: {
+        struct sockaddr_un sa;
+
+        a->socket = socket(PF_UNIX, SOCK_DGRAM, 0);
+        if (a->socket == -1) {
+            a->errnum = geterror();
+            a->errstr = NULL;
+            return -1;
+        }
+
+        sa.sun_family = AF_UNIX;
+        strncpy(sa.sun_path, a->port, sizeof(sa.sun_path) - 1);
+
+        if ((connect(a->socket, (struct sockaddr *) &sa, sizeof(sa))) < 0) {
+            a->errnum = geterror();
+            a->errstr = NULL;
+            closesocket(a->socket);
+            a->socket = -1;
+            return -1;
+        }
+    }
+        break;
+#endif
     default:
         /* unknown protocol */
         return -2;
@@ -411,8 +452,10 @@ static int send_data(lo_address a, lo_server from, char *data,
     ssize_t ret = 0;
     int sock = -1;
 
+#if defined(WIN32) || defined(_MSC_VER)
     if (!initWSock())
         return -1;
+#endif
 
     if (a->protocol == LO_UDP && data_len > LO_MAX_UDP_MSG_SIZE) {
         a->errnum = 99;

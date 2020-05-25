@@ -16,6 +16,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef WIN32
+# include <unistd.h>
+#endif
 #include "lo/lo.h"
 
 int done = 0;
@@ -55,7 +58,11 @@ int main()
     lo_server_thread_start(st);
 
     while (!done) {
+#ifdef WIN32
         Sleep(1);
+#else
+        usleep(1000);
+#endif
     }
 
     lo_server_thread_free(st);
