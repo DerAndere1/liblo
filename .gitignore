@@ -16,7 +16,6 @@
 /examples/example_tcp_echo_server
 /examples/nonblocking_server_example
 /examples/cpp_example
-/ltmain.sh
 /README
 /src/cpp_test
 /src/liblo.def
