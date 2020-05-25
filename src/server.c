@@ -29,13 +29,9 @@
 #include <fcntl.h>
 #include <time.h>
 
-#ifdef _MSC_VER
 #define _WINSOCKAPI_
 #define snprintf _snprintf
-#else
-#include <unistd.h>
-#include <sys/time.h>
-#endif
+
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -45,12 +41,6 @@
 // check for WSAEADDRINUSE though on Windows.
 #ifndef EADDRINUSE
 #define EADDRINUSE WSAEADDRINUSE
-#include <sys/un.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#ifdef HAVE_GETIFADDRS
-#include <ifaddrs.h>
-#endif
 #endif
 
 #define geterror() WSAGetLastError()
