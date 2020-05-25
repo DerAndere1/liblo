@@ -191,9 +191,7 @@ typedef struct _lo_server_thread {
 #ifdef HAVE_LIBPTHREAD
     pthread_t thread;
 #else
-#ifdef HAVE_WIN32_THREADS
     HANDLE thread;
-#endif
 #endif
     volatile int active;
     volatile int done;

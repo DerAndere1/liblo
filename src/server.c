@@ -2385,9 +2385,7 @@ void *lo_error_context;
 #ifdef HAVE_LIBPTHREAD
     pthread_mutex_t lo_error_context_mutex = PTHREAD_MUTEX_INITIALIZER;
 #else
-#ifdef HAVE_WIN32_THREADS
     CRITICAL_SECTION lo_error_context_mutex = {(void*)-1,-1,0,0,0,0};
-#endif
 #endif
 #endif
 
@@ -2399,9 +2397,7 @@ void lo_throw(lo_server s, int errnum, const char *message,
 #ifdef HAVE_LIBPTHREAD
         pthread_mutex_lock(&lo_error_context_mutex);
 #else
-#ifdef HAVE_WIN32_THREADS
         EnterCriticalSection (&lo_error_context_mutex);
-#endif
 #endif
 #endif
         lo_error_context = s->error_user_data;
@@ -2410,9 +2406,7 @@ void lo_throw(lo_server s, int errnum, const char *message,
 #ifdef HAVE_LIBPTHREAD
         pthread_mutex_unlock (&lo_error_context_mutex);
 #else
-#ifdef HAVE_WIN32_THREADS
         LeaveCriticalSection (&lo_error_context_mutex);
-#endif
 #endif
 #endif
     }
