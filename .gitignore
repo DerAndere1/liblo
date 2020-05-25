@@ -25,7 +25,6 @@
 /src/subtest
 /src/test_bidirectional_tcp
 /src/testlo
-/src/tools/Makefile.in
 /src/tools/oscdump
 /src/tools/oscsend
 /stamp-h1
