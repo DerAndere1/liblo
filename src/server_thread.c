@@ -40,11 +40,7 @@
 #include "lo/lo.h"
 #include "lo/lo_throw.h"
 
-#ifdef HAVE_WIN32_THREADS
 static unsigned __stdcall thread_func(void *data);
-#else
-static void* thread_func(void *data);
-#endif
 
 lo_server_thread lo_server_thread_new(const char *port,
                                       lo_err_handler err_h)
@@ -172,7 +168,6 @@ int lo_server_thread_start(lo_server_thread st)
             return -result;
         }
 #else
-#ifdef HAVE_WIN32_THREADS
         st->thread = (HANDLE)_beginthreadex (NULL, 0, &thread_func, st, 0, NULL);
 
         if (st->thread == NULL)
@@ -182,9 +177,6 @@ int lo_server_thread_start(lo_server_thread st)
                 strerror (errno));
             return -1;
         }
-#else
-#error "No threading implementation available."
-#endif
 #endif
     }
     return 0;
@@ -209,7 +201,6 @@ int lo_server_thread_stop(lo_server_thread st)
             return -result;
         }
 #else
-#ifdef HAVE_WIN32_THREADS
         result = WaitForSingleObject (st->thread, INFINITE);
         CloseHandle (st->thread);
         st->thread = NULL;
@@ -220,9 +211,6 @@ int lo_server_thread_stop(lo_server_thread st)
                 result);
             return -1;
         }
-#else
-#error "No threading implementation available."
-#endif
 #endif
     }
 
@@ -249,11 +237,7 @@ int lo_server_thread_events_pending(lo_server_thread st)
     return lo_server_events_pending(st->s);
 }
 
-#ifdef HAVE_WIN32_THREADS
 static unsigned __stdcall thread_func(void *data)
-#else
-static void* thread_func(void *data)
-#endif
 {
     lo_server_thread st = (lo_server_thread) data;
 
@@ -264,11 +248,7 @@ static void* thread_func(void *data)
 #ifdef HAVE_LIBPTHREAD
             pthread_exit (NULL);
 #else
-#ifdef HAVE_WIN32_THREADS
             _endthread ();
-#else
-#error "No threading implementation selected."
-#endif
 #endif
             return 0;
         }
@@ -286,11 +266,7 @@ static void* thread_func(void *data)
 #ifdef HAVE_LIBPTHREAD
     pthread_exit(NULL);
 #else
-#ifdef HAVE_WIN32_THREADS
     _endthread ();
-#else
-#error "No threading implementation selected."
-#endif
 #endif
     return 0;
 }
